@@ -95,6 +95,12 @@ sudo dpkg -i antz-0.1.0-Linux.deb
 # Fix missing dependencies if needed
 sudo apt-get install -f
 
+# Before you start the service, make sure you have a USB ANT+ stick connected.
+# If you want to use MQTT, make sure you have a broker running and edit the 
+# line `ExecStart=/usr/bin/antz` in the service file located at 
+# `/lib/systemd/system/antz.service` to match your needs.
+# For help on arguments, run `sudo /usr/bin/antz -h`
+
 # Enable and start the service
 sudo systemctl enable antz
 sudo systemctl start antz

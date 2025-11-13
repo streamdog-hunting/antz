@@ -55,6 +55,9 @@ antz/
 ├── docs/                  # Documentation and specifications
 │   ├── Architecture.md    # Outlines the architectural foundation of the `antz` project
 │   └── nrf5_platform.md   # Embedded firmware platform guidance
+│
+├── packaging/             # Packaging scripts and metadata
+└── scripts/               # Micellaneous build scripts
 ```
 
 ## ✅ Current Platform Focus
@@ -100,6 +103,12 @@ sudo dpkg -i antz-0.1.0-Linux.deb
 
 # If missing dependencies, fix them with:
 sudo apt-get install -f
+
+# Before you start the service, make sure you have a USB ANT+ stick connected.
+# If you want to use MQTT, make sure you have a broker running and edit the 
+# line `ExecStart=/usr/bin/antz` in the service file located at 
+# `/lib/systemd/system/antz.service` to match your needs.
+# For help on arguments, run `sudo /usr/bin/antz -h`
 
 # Enable and start the service
 sudo systemctl enable antz
