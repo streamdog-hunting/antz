@@ -31,7 +31,8 @@ adapted to a variety of environments:
 antz/
 ├── libs/                  # Modular runtime libraries
 │   ├── antz_core/         # Platform-agnostic ANT+ core libary
-│   │   ├── profiles/      # Parsers for HRM, Asset Tracker pages
+│   │   ├── profiles/      # Parsers for HRM, Asset Tracker and common pages
+│   │   │   └── common/    # ANT+ Common Data Pages 80/81 — shared by every profile
 │   │   ├── events/        # Device state & change propagation
 │   │   └── simulators/    # Test data generators for simulation
 │   │

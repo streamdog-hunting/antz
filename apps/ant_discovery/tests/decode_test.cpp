@@ -7,6 +7,8 @@
 //
 #include "ant_decode.h"
 
+#include "profiles/common/common_decoder.h"
+
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -125,6 +127,57 @@ static int heart_rate() {
 // Each group is registered with CTest separately, so a failure names the part
 // of the spec that broke and a group can be run on its own. With no argument
 // every group runs, which is what a bare ./antz_decode_test does.
+// ─── Common Data Pages 80 and 81, D00001198 ───────────────────────────────
+//
+// Not in ant_decode.h: these are common to every ANT+ profile rather than to
+// the Tracker, so they live in antz_core beside the profiles. Tested here
+// because this is where the decode suite is.
+static int common_pages() {
+    // Page 80. Garmin is manufacturer 1; model and hardware revision are the
+    // maker's own. Bytes 1-2 are reserved and all-ones, and reading them as
+    // a field is the mistake the layout invites.
+    const uint8_t page80[8] = { 0x50, 0xFF, 0xFF, 0x01, 0x01, 0x00, 0xC7, 0x06 };
+    antz_common_manufacturer_t mfg{};
+    CHECK(antz::common_decode_manufacturer(page80, 8, &mfg) == 0);
+    CHECK(mfg.hw_revision == 1);
+    CHECK(mfg.manufacturer_id == 1);
+    CHECK(mfg.model_number == 1735);
+
+    // Page 81, with both optional fields present.
+    const uint8_t page81[8] = { 0x51, 0xFF, 0x0A, 0x03, 0xD2, 0x02, 0x96, 0x49 };
+    antz_common_product_t product{};
+    CHECK(antz::common_decode_product(page81, 8, &product) == 0);
+    CHECK(product.sw_revision_main == 3);
+    CHECK(product.sw_revision_supplemental == 10);
+    CHECK(product.sw_revision_supplemental_valid);
+    CHECK(product.serial == 1234567890u);
+    CHECK(product.serial_valid);
+
+    // All-ones is a refusal, not a value. A decoder testing the number
+    // instead of the flag gives every declining device serial 4294967295 —
+    // which makes them one device rather than none.
+    const uint8_t page81none[8] = { 0x51, 0xFF, 0xFF, 0x03, 0xFF, 0xFF, 0xFF, 0xFF };
+    antz_common_product_t declined{};
+    CHECK(antz::common_decode_product(page81none, 8, &declined) == 0);
+    CHECK(declined.sw_revision_main == 3);
+    CHECK(!declined.sw_revision_supplemental_valid);
+    CHECK(!declined.serial_valid);
+
+    // The page number is checked, unlike in the Tracker decoders. These two
+    // are reached by dispatch over one shared page space, so routing 0x50 to
+    // the product decoder must fail rather than read a manufacturer id as
+    // the low half of a serial.
+    CHECK(antz::common_decode_product(page80, 8, &product) != 0);
+    CHECK(antz::common_decode_manufacturer(page81, 8, &mfg) != 0);
+
+    // Null and short input, as the Tracker decoders handle them.
+    CHECK(antz::common_decode_manufacturer(nullptr, 8, &mfg) != 0);
+    CHECK(antz::common_decode_manufacturer(page80, 8, nullptr) != 0);
+    CHECK(antz::common_decode_manufacturer(page80, 7, &mfg) != 0);
+    CHECK(antz::common_decode_product(page81, 7, &product) != 0);
+    return 0;
+}
+
 struct Group { const char* name; int (*run)(); };
 
 static const Group groups[] = {
@@ -132,6 +185,7 @@ static const Group groups[] = {
     { "tracker.asset_index", asset_index },
     { "tracker.units",       units       },
     { "hrm.page_and_rate",   heart_rate  },
+    { "common.pages_80_81",  common_pages },
 };
 
 int main(const int argc, char** argv) {

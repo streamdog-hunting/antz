@@ -257,7 +257,8 @@ foreach(group
         tracker.status_byte
         tracker.asset_index
         tracker.units
-        hrm.page_and_rate)
+        hrm.page_and_rate
+        common.pages_80_81)
     add_test(NAME ${group} COMMAND antz_decode_test ${group})
 endforeach()
 
