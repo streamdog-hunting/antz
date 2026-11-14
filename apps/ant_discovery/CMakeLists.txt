@@ -253,6 +253,29 @@ target_link_libraries(antz_encode_test PRIVATE antz_core)
 target_compile_features(antz_encode_test PRIVATE cxx_std_20)
 add_test(NAME antz_encode COMMAND antz_encode_test)
 
+# The Garmin Astro / Alpha USB decoder: framing, header, session, product, the
+# handheld's position and the dog packet. Links nothing but antz_core. The
+# `replay` group decodes real recordings when ANTZ_GARMIN_USB_REPLAY names a
+# JSON lines file; without it that group reports itself skipped.
+add_executable(antz_garmin_usb_test tests/garmin_usb_test.cpp)
+target_include_directories(antz_garmin_usb_test PRIVATE src)
+target_link_libraries(antz_garmin_usb_test PRIVATE antz_core)
+target_compile_features(antz_garmin_usb_test PRIVATE cxx_std_20)
+foreach(group
+        header
+        session_and_product
+        pvt
+        dog.fields
+        dog.status
+        dog.gps_loss
+        dog.name_and_evidence
+        dog.refused
+        framer
+        framer.oversize_and_corrupt
+        replay)
+    add_test(NAME garmin_usb.${group} COMMAND antz_garmin_usb_test ${group})
+endforeach()
+
 # The fragment builders need the app's structs, so this one also needs the ANT
 # SDK headers for its typedefs — headers only, nothing is linked.
 add_executable(antz_format_test tests/format_test.cpp)
