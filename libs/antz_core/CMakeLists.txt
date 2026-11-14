@@ -1,5 +1,10 @@
 # core/CMakeLists.txt
 
+# The version of antz_core as a library, tagged antz-core-v<version>. This is
+# not the antz application's own package version (CPACK_PACKAGE_VERSION in the
+# top level file, tagged v*). RELEASING.md lists every place that carries it.
+set(ANTZ_CORE_VERSION "0.1.0")
+
 add_library(antz_core STATIC
     src/antz_core_logging.h
     src/data/antz_data.h
