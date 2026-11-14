@@ -1,0 +1,87 @@
+# Publish a GitHub Release for libs/antz_core on an antz-core-v* tag.
+#
+# The Release is the distribution: consumers compile the source, so nothing
+# built is attached. What is attached is antz_core itself, libs/antz_core and
+# the licence, as antz-core-<version>.tar.gz and its .sha256, the same bytes for
+# the same tag, so a consumer pins the tag and the hash.
+#
+# The build and test happen in test.yml on every push, so a tag points at a
+# commit that has already been proven. Running ctest here again would check the
+# same commit twice and let a green tag imply a second, independent check that
+# it is not.
+#
+# Not the antz application's tags: v* still builds the Raspberry Pi package.
+name: Release antz_core
+
+on:
+  push:
+    tags: ['antz-core-v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release-antz-core-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Two files carry the version and drift if nobody looks. A tag is the last
+      # moment to catch it, and the first a consumer would see the result.
+      - name: Check the tag matches the version in the sources
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF#refs/tags/antz-core-v}"
+          cmake="$(sed -n 's/^set(ANTZ_CORE_VERSION "\([0-9.]*\)").*$/\1/p' libs/antz_core/CMakeLists.txt)"
+          head="$(sed -n 's/^## \[\([0-9][0-9.]*\)\].*/\1/p' libs/antz_core/CHANGELOG.md | head -1)"
+          fail=0
+          for pair in "libs/antz_core/CMakeLists.txt:${cmake}" "libs/antz_core/CHANGELOG.md:${head}"; do
+            file="${pair%%:*}"; found="${pair#*:}"
+            # Empty means the pattern read nothing, not that the version is blank.
+            if [ -z "${found}" ]; then
+              echo "::error::could not read a version from ${file}; this check is reading the wrong thing"
+              fail=1
+              continue
+            fi
+            if [ "${found}" != "${tag}" ]; then
+              echo "::error::${file} says ${found}, tag says ${tag}"
+              fail=1
+            fi
+          done
+          [ "${fail}" = "0" ] || exit 1
+          echo "releasing ${tag}"
+
+      - name: Publish the release with its archive and sha256
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          version="${tag#antz-core-v}"
+          notes="$(mktemp)"
+          awk -v v="## [${version}]" '
+            index($0, v) == 1 { inside = 1; next }
+            inside && /^## \[/ { exit }
+            inside { print }
+          ' libs/antz_core/CHANGELOG.md > "${notes}"
+          if [ ! -s "${notes}" ]; then
+            echo "::error::No CHANGELOG.md section for ${version}; a release with no section is a release with no record."
+            exit 1
+          fi
+          {
+            echo ""
+            echo "The source archive below is libs/antz_core and the licence. Use it with CMake's"
+            echo "FetchContent and SOURCE_SUBDIR libs/antz_core, pinned to its sha256."
+          } >> "${notes}"
+          git fetch --no-tags --depth=1 origin "+refs/tags/${tag}:refs/tags/${tag}"
+          .github/scripts/antz-core-archive.sh "${tag}" dist
+          gh release create "${tag}" dist/*.tar.gz dist/*.tar.gz.sha256 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "antz_core ${version}" \
+            --notes-file "${notes}"
