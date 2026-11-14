@@ -14,6 +14,7 @@
 #include "types.h"
 #include "logging.h"
 #include "discovery.hpp"
+#include "garmin_usb_cli.h"
 
 
 void print_stacktrace() {
@@ -44,6 +45,7 @@ void usage(char** argv)
     << "* Output format     : -f,--format <text|json|csv>   Example: -f json" << std::endl
     << "* Minimum distance  : -e,--eps <meters>             Example: -e 3" << std::endl
     << "* MQTT broker       : -m,--mqtt <cnn>               Example: -m mqtt://user:pass@broker.example.com:1883/ant?retain=1&qos=1" << std::endl
+    << "* Garmin USB mode   : --garmin-usb [--seconds <n>]  Read a Garmin Astro/Alpha over its USB cable, not ANT" << std::endl
     << "* Verbose output    : -v,--verbose" << std::endl
     << "* Show this help    : -h,--help" << std::endl
     << std::endl;
@@ -59,6 +61,8 @@ int main(const int argc, char** argv) {
     std::string mqttCnn;
     UCHAR  deviceNumber = 0xFF;
     auto deviceNotGiven = true;
+    auto garminUsb = false;
+    double garminSeconds = 0;
     std::vector<ant::AntProfile> types;
     // Default to false/Info unless overridden by -v/--verbose
     auto verbose = false;
@@ -126,10 +130,47 @@ int main(const int argc, char** argv) {
                 mqttCnn = argv[++i];
             }
         }
+        else if (arg == "--garmin-usb") {
+            garminUsb = true;
+        }
+        else if (arg == "--seconds") {
+            try {
+                garminSeconds = i + 1 < argc ? std::stod(argv[++i]) : -1;
+            } catch (const std::exception&) {
+                garminSeconds = -1;
+            }
+            if (garminSeconds <= 0) {
+                std::cerr << "ERROR: Invalid value for --seconds (expected a number above 0)" << std::endl;
+                usage(argv);
+                return 2;
+            }
+        }
         else if (arg == "-h" || arg == "--help") {
             usage(argv);
             return 0;
         }
+    }
+
+    if (garminUsb) {
+        // The Garmin USB mode reads the handheld over its own cable and uses
+        // none of the ANT mode's options.
+        if (!mqttCnn.empty() || !types.empty() || !deviceNotGiven) {
+            std::cerr << "ERROR: --garmin-usb cannot be combined with -m, -s or -d" << std::endl;
+            usage(argv);
+            return 2;
+        }
+        ant::garmin_usb::Options usbOptions;
+        usbOptions.format = outputFormat == ant::OutputFormat::JSON ? ant::garmin_usb::Format::Json
+                          : outputFormat == ant::OutputFormat::CSV  ? ant::garmin_usb::Format::Csv
+                                                                    : ant::garmin_usb::Format::Text;
+        usbOptions.verbose = verbose;
+        usbOptions.seconds = garminSeconds;
+        return ant::garmin_usb::runCli(usbOptions);
+    }
+    if (garminSeconds > 0) {
+        std::cerr << "ERROR: --seconds is only used with --garmin-usb" << std::endl;
+        usage(argv);
+        return 2;
     }
 
     try {
