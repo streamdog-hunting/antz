@@ -276,6 +276,60 @@ foreach(group
     add_test(NAME garmin_usb.${group} COMMAND antz_garmin_usb_test ${group})
 endforeach()
 
+# Session tests: the session against a fake transport.
+add_executable(antz_garmin_usb_session_test tests/garmin_usb_session_test.cpp)
+target_include_directories(antz_garmin_usb_session_test PRIVATE src)
+target_link_libraries(antz_garmin_usb_session_test PRIVATE antz_core)
+target_compile_features(antz_garmin_usb_session_test PRIVATE cxx_std_20)
+foreach(group
+        start
+        start_write_fails
+        init_refuses
+        handshake
+        handshake_once
+        handshake_short
+        poll_timeout
+        product_and_dogs
+        dog_before_product
+        short_dog_ignored
+        pvt
+        unknown_pids
+        null_events
+        endpoints_switch
+        bulk_continues
+        interrupt_idle
+        bulk_data_available
+        split.interrupt
+        split.bulk
+        independent_readers
+        error.partial_packet
+        error.transport
+        error.frame
+        stop)
+    add_test(NAME garmin_usb_session.${group} COMMAND antz_garmin_usb_session_test ${group})
+endforeach()
+
+# Extra decoder cases from the test author.
+add_executable(antz_garmin_usb_extra_test tests/garmin_usb_decoder_extra_test.cpp)
+target_include_directories(antz_garmin_usb_extra_test PRIVATE src)
+target_link_libraries(antz_garmin_usb_extra_test PRIVATE antz_core)
+target_compile_features(antz_garmin_usb_extra_test PRIVATE cxx_std_20)
+foreach(group
+        header
+        small_packets
+        pvt
+        semicircles
+        dog.time
+        dog.gps_loss_bit
+        dog.model_gating
+        dog.battery_raw
+        dog.name
+        dog.refused
+        framer.edges
+        framer.split_points)
+    add_test(NAME garmin_usb_extra.${group} COMMAND antz_garmin_usb_extra_test ${group})
+endforeach()
+
 # The fragment builders need the app's structs, so this one also needs the ANT
 # SDK headers for its typedefs — headers only, nothing is linked.
 add_executable(antz_format_test tests/format_test.cpp)
