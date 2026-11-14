@@ -79,7 +79,8 @@ static std::vector<uint8_t> frame(uint8_t layer, uint16_t pid, const std::vector
     f[0] = layer;
     put_u16(f, 4, pid);
     put_u32(f, 8, static_cast<uint32_t>(payload.size()));
-    std::memcpy(&f[12], payload.data(), payload.size());
+    // &f[12] of an empty payload is one past the end: not a valid index.
+    if (!payload.empty()) std::memcpy(f.data() + 12, payload.data(), payload.size());
     return f;
 }
 
