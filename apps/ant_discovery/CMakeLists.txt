@@ -253,6 +253,14 @@ target_link_libraries(antz_encode_test PRIVATE antz_core)
 target_compile_features(antz_encode_test PRIVATE cxx_std_20)
 add_test(NAME antz_encode COMMAND antz_encode_test)
 
+# ant_discovery's Garmin USB mode: the output lines and the run loop over a
+# transport. No ANT SDK and no libusb, so the tests run anywhere. main.cpp calls
+# it with the real libusb transport. (An interface library until the sources land.)
+add_library(antz_garmin_usb_mode INTERFACE)
+target_include_directories(antz_garmin_usb_mode INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(antz_garmin_usb_mode INTERFACE antz_core)
+target_compile_features(antz_garmin_usb_mode INTERFACE cxx_std_17)
+
 # The Garmin Astro / Alpha USB decoder: framing, header, session, product, the
 # handheld's position and the dog packet. Links nothing but antz_core. The
 # `replay` group decodes real recordings when ANTZ_GARMIN_USB_REPLAY names a

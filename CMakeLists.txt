@@ -23,6 +23,9 @@ message(STATUS "Selected ANTZ platform: ${ANTZ_PLATFORM}")
 # Core module (antz data, pages, event)
 add_subdirectory(libs/antz_core)
 
+# The libusb transport for a Garmin handheld over USB
+add_subdirectory(libs/antz_platform_libusb)
+
 # Platform module (hal implementation helpers)
 add_subdirectory(libs/antz_platform)
 
