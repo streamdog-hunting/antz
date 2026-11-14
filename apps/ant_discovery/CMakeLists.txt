@@ -330,6 +330,17 @@ foreach(group
     add_test(NAME garmin_usb_extra.${group} COMMAND antz_garmin_usb_extra_test ${group})
 endforeach()
 
+# Replays of generated, sanitised sequences (tests/data) through the session.
+add_executable(antz_garmin_usb_replay_test tests/garmin_usb_replay_test.cpp)
+target_include_directories(antz_garmin_usb_replay_test PRIVATE src)
+target_link_libraries(antz_garmin_usb_replay_test PRIVATE antz_core)
+target_compile_features(antz_garmin_usb_replay_test PRIVATE cxx_std_20)
+target_compile_definitions(antz_garmin_usb_replay_test PRIVATE
+    ANTZ_REPLAY_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+foreach(group normal reconnect reboot rename radio_id power_cycle gps_loss alpha)
+    add_test(NAME garmin_usb_replay.${group} COMMAND antz_garmin_usb_replay_test ${group})
+endforeach()
+
 # The fragment builders need the app's structs, so this one also needs the ANT
 # SDK headers for its typedefs — headers only, nothing is linked.
 add_executable(antz_format_test tests/format_test.cpp)
