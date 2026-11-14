@@ -261,6 +261,23 @@ target_include_directories(antz_garmin_usb_mode INTERFACE ${CMAKE_CURRENT_SOURCE
 target_link_libraries(antz_garmin_usb_mode INTERFACE antz_core)
 target_compile_features(antz_garmin_usb_mode INTERFACE cxx_std_17)
 
+# The libusb transport over a fake ops table, and the USB mode's format and run loop.
+add_executable(antz_garmin_usb_libusb_test tests/garmin_usb_libusb_test.cpp)
+target_link_libraries(antz_garmin_usb_libusb_test PRIVATE antz_garmin_usb_libusb)
+target_compile_features(antz_garmin_usb_libusb_test PRIVATE cxx_std_20)
+foreach(group one_device device_count open_order open_fails kernel_driver close_order close_never_opened bad_arguments write write_failures read_interrupt read_bulk read_errors end_to_end status_text)
+    add_test(NAME garmin_usb_libusb.${group} COMMAND antz_garmin_usb_libusb_test ${group})
+endforeach()
+
+add_executable(antz_garmin_usb_mode_test tests/garmin_usb_mode_test.cpp)
+target_link_libraries(antz_garmin_usb_mode_test PRIVATE antz_garmin_usb_mode)
+target_compile_features(antz_garmin_usb_mode_test PRIVATE cxx_std_20)
+target_compile_definitions(antz_garmin_usb_mode_test PRIVATE
+    ANTZ_REPLAY_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+foreach(group status_names json_handheld json_position json_dog json_escaping csv_format text_format run_normal run_formats run_csv_header run_verbose run_sequences run_idle run_stop run_stop_early run_seconds run_errors exit_codes)
+    add_test(NAME garmin_usb_mode.${group} COMMAND antz_garmin_usb_mode_test ${group})
+endforeach()
+
 # The Garmin Astro / Alpha USB decoder: framing, header, session, product, the
 # handheld's position and the dog packet. Links nothing but antz_core. The
 # `replay` group decodes real recordings when ANTZ_GARMIN_USB_REPLAY names a
