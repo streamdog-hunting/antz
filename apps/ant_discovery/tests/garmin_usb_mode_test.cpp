@@ -104,7 +104,8 @@ static int json_position() {
     const std::string head = R"({"page":"handheld_position","unit_id":3886356464,"latitude":59.900000,"longitude":10.700000,"altitude":)";
     CHECK(s.compare(0, head.size(), head) == 0);
     CHECK(std::fabs(std::atof(num_after(s, "altitude").c_str()) - 141.0) < 1e-3);
-    CHECK(s.size() > 8 && s.compare(s.size() - 8, 8, R"(,"fix":3})") == 0);
+    const std::string tail = R"(,"fix":3})";
+    CHECK(s.size() > tail.size() && s.compare(s.size() - tail.size(), tail.size(), tail) == 0);
     // Southern and western hemispheres.
     v.latitude_deg = -33.8688; v.longitude_deg = -70.6693;
     const std::string w = formatHandheldPosition(Format::Json, 1, v);
@@ -370,6 +371,52 @@ static std::vector<std::string> pages_of(const std::string& out) {
     return v;
 }
 
+// ─── Exact CSV and text, from the comment in garmin_usb_format.h ───────────
+static int exact_csv_and_text() {
+    CHECK(csvHeader("handheld") == "page,unit_id,product_id,software");
+    CHECK(csvHeader("handheld_position") == "page,unit_id,latitude,longitude,altitude,fix");
+    CHECK(csvHeader("dog") == "page,unit_id,name,latitude,longitude,time,status,status_raw,gps_lost,"
+                              "gps_bars,comm_bars,battery_raw,flags,track_color,configured_id");
+
+    antz_garmin_usb_product_t prod = {1339, 460};
+    antz_garmin_usb_pvt_t pvt; std::memset(&pvt, 0, sizeof pvt);
+    pvt.latitude_deg = 59.9; pvt.longitude_deg = 10.7; pvt.altitude_m = 141.0; pvt.fix = 3;
+    const antz_garmin_usb_dog_t d = astro_dog();
+    CHECK(formatHandheld(Format::Csv, 3886356464u, prod) == "handheld,3886356464,1339,4.60");
+    CHECK(formatHandheldPosition(Format::Csv, 3886356464u, pvt) == "handheld_position,3886356464,59.900000,10.700000,141.0,3");
+    CHECK(formatDog(Format::Csv, 3886356464u, d) ==
+          "dog,3886356464,Khione,59.900000,10.700000,2026-11-10T12:00:00Z,moving,2,false,5,5,40,0,12,11");
+
+    // Unknowns are empty cells: gps_lost, track_color, configured_id; the raw status stays.
+    antz_garmin_usb_dog_t u = d;
+    u.gps_lost_known = 0; u.gps_lost = 0; u.track_color_known = 0; u.track_color_code = 0;
+    u.configured_id_known = 0; u.configured_id = 0; u.status = GARMIN_USB_DOG_STATUS_UNKNOWN; u.status_raw = 77;
+    CHECK(formatDog(Format::Csv, 1, u) == "dog,1,Khione,59.900000,10.700000,2026-11-10T12:00:00Z,unknown,77,,5,5,40,0,,");
+
+    // Lost GPS, southern and western position.
+    antz_garmin_usb_dog_t l = d; l.gps_lost = 1; l.flags = 0x20; l.gps_bars = 0; l.latitude_deg = -33.8688; l.longitude_deg = -70.6693;
+    CHECK(formatDog(Format::Csv, 1, l) == "dog,1,Khione,-33.868800,-70.669300,2026-11-10T12:00:00Z,moving,2,true,0,5,40,32,12,11");
+
+    // Quoting, RFC 4180.
+    antz_garmin_usb_dog_t q = d; std::strcpy(q.name, "a,b");
+    CHECK(formatDog(Format::Csv, 1, q) == "dog,1,\"a,b\",59.900000,10.700000,2026-11-10T12:00:00Z,moving,2,false,5,5,40,0,12,11");
+    std::memset(q.name, 0, sizeof q.name); std::strcpy(q.name, "say \"hi\"");
+    CHECK(formatDog(Format::Csv, 1, q) == "dog,1,\"say \"\"hi\"\"\",59.900000,10.700000,2026-11-10T12:00:00Z,moving,2,false,5,5,40,0,12,11");
+    std::memset(q.name, 0, sizeof q.name); std::strcpy(q.name, "two\nlines");
+    CHECK(formatDog(Format::Csv, 1, q).find("\"two\nlines\"") != std::string::npos);
+
+    // Text.
+    CHECK(formatHandheld(Format::Text, 3886356464u, prod) == "handheld unit 3886356464 product 1339 software 4.60");
+    CHECK(formatHandheldPosition(Format::Text, 3886356464u, pvt) == "handheld_position unit 3886356464 59.900000,10.700000 alt 141.0 fix 3");
+    CHECK(formatDog(Format::Text, 3886356464u, d) ==
+          "dog Khione unit 3886356464 59.900000,10.700000 2026-11-10T12:00:00Z moving (2) gps_lost no gps 5 comm 5 battery_raw 40");
+    CHECK(formatDog(Format::Text, 1, u) ==
+          "dog Khione unit 1 59.900000,10.700000 2026-11-10T12:00:00Z unknown (77) gps_lost ? gps 5 comm 5 battery_raw 40");
+    // «yes» for a lost fix is the counterpart of «no» in the comment (inferred).
+    CHECK(has(formatDog(Format::Text, 1, l), "moving (2) gps_lost yes gps 0 comm 5"));
+    return 0;
+}
+
 // ─── Run: a normal replay ──────────────────────────────────────────────────
 static int run_normal_json() {
     Fake f; CHECK(f.load_replay("replay_normal_astro.jsonl"));
@@ -534,7 +581,9 @@ static int run_idle_timeout() {
     for (int i = 0; i < 10; ++i) { h.push(0, frame(20, 51, pvt)); h.idle(0, 5); }
     Outcome k = run_with(h, opts(Format::Json, 0, 3));
     CHECK(k.result == RunResult::IdleTimeout);
-    CHECK(k.elapsed_ms >= 10 * 2500 + 2500 && k.elapsed_ms <= 10 * 2500 + 3700);
+    // The last packet is read 9 rounds (2501 ms each: a 1 ms read and five 500 ms timeouts) after
+    // the first; then 3000 ms of silence is needed, noticed at a poll (500 ms steps).
+    CHECK(k.elapsed_ms >= 9 * 2501 + 1 + 3000 && k.elapsed_ms <= 9 * 2501 + 1 + 3000 + 500);
     int positions = 0;
     for (const auto& p : pages_of(k.out)) if (p == "handheld_position") ++positions;
     CHECK(positions == 10);
@@ -653,7 +702,7 @@ int main(int argc, char** argv) {
     const Group groups[] = {
         {"status_names", status_names}, {"json_handheld", json_handheld}, {"json_position", json_position},
         {"json_dog", json_dog}, {"json_escaping", json_escaping}, {"csv_format", csv_format},
-        {"text_format", text_format}, {"run_normal", run_normal_json}, {"run_formats", run_formats},
+        {"text_format", text_format}, {"exact_csv_and_text", exact_csv_and_text}, {"run_normal", run_normal_json}, {"run_formats", run_formats},
         {"run_csv_header", run_csv_header_once_per_page}, {"run_verbose", run_verbose_keeps_out_clean},
         {"run_sequences", run_sequences}, {"run_idle", run_idle_timeout}, {"run_stop", run_stop_request},
         {"run_stop_early", run_stop_before_stream}, {"run_seconds", run_seconds_limit},

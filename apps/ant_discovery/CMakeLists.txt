@@ -127,6 +127,8 @@ endif()
 # directly, and everything the Debian package does goes through it.
 set(SRC_FILES
     src/main.cpp
+    src/garmin_usb_cli.cpp
+    src/garmin_usb_cli.h
     src/mqtt.h
     src/usb_checker.cpp
     src/discovery.cpp
@@ -165,6 +167,14 @@ add_executable(ant_discovery ${SRC_FILES})
 # is a shim over it, so the app links the library rather than carrying a
 # second copy of the parsing.
 target_link_libraries(ant_discovery PRIVATE antz_core)
+
+# The Garmin USB mode (--garmin-usb). The real libusb binding is built where
+# libusb-1.0 is found; without it the flag reports that the build has none.
+target_link_libraries(ant_discovery PRIVATE antz_garmin_usb_mode)
+if(TARGET antz_garmin_usb_libusb_real)
+    target_link_libraries(ant_discovery PRIVATE antz_garmin_usb_libusb_real)
+    target_compile_definitions(ant_discovery PRIVATE ANTZ_HAVE_GARMIN_USB=1)
+endif()
 
 target_include_directories(ant_discovery PRIVATE
     src
@@ -255,11 +265,13 @@ add_test(NAME antz_encode COMMAND antz_encode_test)
 
 # ant_discovery's Garmin USB mode: the output lines and the run loop over a
 # transport. No ANT SDK and no libusb, so the tests run anywhere. main.cpp calls
-# it with the real libusb transport. (An interface library until the sources land.)
-add_library(antz_garmin_usb_mode INTERFACE)
-target_include_directories(antz_garmin_usb_mode INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(antz_garmin_usb_mode INTERFACE antz_core)
-target_compile_features(antz_garmin_usb_mode INTERFACE cxx_std_17)
+# it with the real libusb transport.
+add_library(antz_garmin_usb_mode STATIC
+    src/garmin_usb_format.h src/garmin_usb_format.cpp
+    src/garmin_usb_mode.h src/garmin_usb_mode.cpp)
+target_include_directories(antz_garmin_usb_mode PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(antz_garmin_usb_mode PUBLIC antz_core)
+target_compile_features(antz_garmin_usb_mode PUBLIC cxx_std_17)
 
 # The libusb transport over a fake ops table, and the USB mode's format and run loop.
 add_executable(antz_garmin_usb_libusb_test tests/garmin_usb_libusb_test.cpp)
@@ -274,7 +286,7 @@ target_link_libraries(antz_garmin_usb_mode_test PRIVATE antz_garmin_usb_mode)
 target_compile_features(antz_garmin_usb_mode_test PRIVATE cxx_std_20)
 target_compile_definitions(antz_garmin_usb_mode_test PRIVATE
     ANTZ_REPLAY_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
-foreach(group status_names json_handheld json_position json_dog json_escaping csv_format text_format run_normal run_formats run_csv_header run_verbose run_sequences run_idle run_stop run_stop_early run_seconds run_errors exit_codes)
+foreach(group status_names json_handheld json_position json_dog json_escaping csv_format text_format exact_csv_and_text run_normal run_formats run_csv_header run_verbose run_sequences run_idle run_stop run_stop_early run_seconds run_errors exit_codes)
     add_test(NAME garmin_usb_mode.${group} COMMAND antz_garmin_usb_mode_test ${group})
 endforeach()
 

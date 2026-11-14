@@ -474,10 +474,13 @@ static int end_to_end() {
     f.push(f.int_in, frame(0, 6, unit));
     CHECK(garmin_usb_session_poll(&s, 10) == GARMIN_USB_POLL_OK);
     CHECK(log.units.size() == 1 && log.units[0] == 3886356464u);
-    CHECK(f.xfers.size() == 3);
-    CHECK(f.xfers[1].data == frame(20, 254, Bytes()));
+    std::vector<Fake::Xfer> outs;                      // the writes, without the interrupt read between them
+    for (const auto& x : f.xfers) if (x.call == "bulk_out") outs.push_back(x);
+    CHECK(outs.size() == 3 && f.xfers.size() == 4);
+    CHECK(outs[1].data == frame(20, 254, Bytes()));
     Bytes cmd(2, 0); put_u16(cmd, 0, 49);
-    CHECK(f.xfers[2].data == frame(20, 10, cmd));
+    CHECK(outs[2].data == frame(20, 10, cmd));
+    CHECK(outs[1].endpoint == 0x05 && outs[2].endpoint == 0x05);
 
     Bytes prod(24, 0); put_u16(prod, 0, 1339); put_u16(prod, 2, 460);
     f.push(f.int_in, frame(20, 255, prod));
