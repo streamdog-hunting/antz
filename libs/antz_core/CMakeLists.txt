@@ -24,6 +24,8 @@ add_library(antz_core STATIC
     src/profiles/tracker/tracker_encoder.cpp
     src/profiles/garmin_usb/garmin_usb_decoder.h
     src/profiles/garmin_usb/garmin_usb_decoder.cpp
+    src/profiles/garmin_usb/garmin_usb_session.h
+    src/profiles/garmin_usb/garmin_usb_session.cpp
     src/logger/antz_logger.h
     src/logger/antz_logger.cpp
     src/error/antz_error.h

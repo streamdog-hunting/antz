@@ -92,6 +92,8 @@ namespace antz {
         uint8_t  started;        // Start_Session was sent
         uint8_t  streaming;      // Session_Started arrived and the product and position requests were sent
         uint8_t  failed;         // a poll returned an error; no more input is read
+        uint8_t  error;          // that error, returned again by every later poll
+        uint8_t  write_failed;   // a write the handshake needed failed inside a poll
         uint16_t product_id;     // from Product_Data, 0 until it arrives
     };
 
@@ -105,11 +107,29 @@ namespace antz {
     int garmin_usb_session_start(antz_garmin_usb_session_t* session);
 
     // One read of the endpoint the session is on, then handle what came.
-    // Returns what happened; after any error the session reads no more.
+    // Returns what happened; after any error the session reads no more and
+    // every later poll returns the same error.
+    //
+    // - One `read` per poll. A Data_Available that arrives in a poll takes
+    //   effect on the next one, which reads the bulk endpoint.
+    // - A read of nothing from the bulk endpoint at a packet boundary ends the
+    //   burst: the session goes back to the interrupt endpoint and the poll
+    //   returns IDLE. Inside a packet it is PARTIAL_PACKET.
+    // - A Session_Started that arrives twice is handled once: one `on_session`,
+    //   one product request, one position request.
+    // - A payload too short for its packet (Session_Started under 4 bytes,
+    //   Dog_Data under 40) and a packet the session does not read are ignored
+    //   with no event and no error. So is a pid on the wrong layer.
+    // - A failed write of the product or position request, made while handling
+    //   Session_Started, ends the session with TRANSPORT_ERROR.
+    // - Every read offers 512 bytes of room, on both endpoints, and `timeout_ms`
+    //   is passed to the transport unchanged. A transport reads no more than its
+    //   endpoint gives: an interrupt read is clamped to the endpoint's max packet.
     antz_garmin_usb_poll_t garmin_usb_session_poll(antz_garmin_usb_session_t* session,
                                                    uint32_t timeout_ms);
 
-    // Sends Stop_Pvt_Data if the position stream was started. Returns nonzero
-    // if the write fails. Safe to call at any time, and when nothing was started.
+    // Sends Stop_Pvt_Data if the position stream was started and not stopped
+    // yet; a second call writes nothing. Returns nonzero if the write fails.
+    // Safe to call at any time, and when nothing was started.
     int garmin_usb_session_stop(antz_garmin_usb_session_t* session);
 }
