@@ -19,9 +19,9 @@ version is 0.
 
 1. On a clean checkout of `main`, run the tests: `cmake -S . -B build -DANTZ_PLATFORM=linux && cmake --build build --target antz_tests && ctest --test-dir build --output-on-failure`.
 2. Set the version in both places above, with the changes since the last tag in the CHANGELOG section. Land it through a pull request.
-3. Build the archive locally from the tag you are about to push and note the hash:
+3. Build the archive locally from the tag you are about to push:
    `git tag antz-core-v<version> && .github/scripts/antz-core-archive.sh antz-core-v<version> /tmp/antz-core-dist`
-   Delete that local tag if the hash is not what you expected; the workflow rebuilds the same bytes from the pushed tag.
+   The compressed file from your machine and from the runner can differ (GNU gzip and Apple gzip compress the same tar to different bytes), so do not compare hashes. Compare the tar inside: `gzip -dc` both files and `cmp` them. Delete the local tag if you do not push it.
 4. Push the tag: `git push origin antz-core-v<version>`. The workflow publishes the release.
-5. Check the release page shows the archive and the `.sha256`, and that the hash matches step 3.
+5. Check the release page shows the archive and the `.sha256`, download the archive and check it against the `.sha256`, and compare its tar with the one from step 3 (`gzip -dc` and `cmp`). The hash on the release page is the one consumers pin.
 6. In a consumer (the Streamdog C SDK's CMake), replace the commit pin with the archive URL and this hash.
