@@ -9,7 +9,10 @@
 #
 # git archive of a commit stamps every entry with the commit time and gzip -n
 # drops the name and time from the header, so the same tag always gives the
-# same bytes and the same hash, wherever it is run.
+# same tar, wherever it is run. The compressed file is not the same everywhere:
+# GNU gzip (the release runner) and Apple gzip compress the same tar to different
+# bytes, so the sha256 to pin is the one the release publishes, and a local run
+# is checked by comparing the uncompressed tar (gzip -dc), not the hash.
 #
 # Usage: antz-core-archive.sh <tag> [out-dir]     e.g. antz-core-archive.sh antz-core-v0.1.0 dist
 set -euo pipefail

@@ -2,8 +2,9 @@
 #
 # The Release is the distribution: consumers compile the source, so nothing
 # built is attached. What is attached is antz_core itself, libs/antz_core and
-# the licence, as antz-core-<version>.tar.gz and its .sha256, the same bytes for
-# the same tag, so a consumer pins the tag and the hash.
+# the licence, as antz-core-<version>.tar.gz and its .sha256. The tar inside is the
+# same for the same tag on any machine; the compressed file is built here, on the
+# runner's gzip, and its hash is the one a consumer pins.
 #
 # The build and test happen in test.yml on every push, so a tag points at a
 # commit that has already been proven. Running ctest here again would check the
