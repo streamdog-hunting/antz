@@ -37,7 +37,7 @@
 //
 //   handheld unit 3886356464 product 1339 software 4.60
 //   handheld_position unit 3886356464 59.900000,10.700000 alt 141.0 fix 3
-//   dog Khione unit 3886356464 59.900000,10.700000 2026-11-10T12:00:00Z moving (2) gps_lost no gps 5 comm 5 battery_raw 40
+//   dog Ragnar unit 3886356464 59.900000,10.700000 2026-11-10T12:00:00Z moving (2) gps_lost no gps 5 comm 5 battery_raw 40
 //
 // The functions return a line without its trailing newline; the run loop adds it.
 // `software` is the version in hundredths with two decimals («4.60»). Altitude

@@ -164,7 +164,7 @@ static int dog_fields() {
     // 2026-11-10 12:00:00 UTC on the Garmin epoch.
     const int64_t unix_s = 1794312000;
     const uint32_t garmin_t = static_cast<uint32_t>(unix_s - GARMIN_USB_EPOCH_UNIX_S);
-    auto p = dog_packet(59.9139, 10.7522, garmin_t, 2, 0, "Khione");
+    auto p = dog_packet(59.9139, 10.7522, garmin_t, 2, 0, "Ragnar");
     antz_garmin_usb_dog_t d{};
     CHECK(garmin_usb_decode_dog(p.data(), p.size(), GARMIN_USB_PRODUCT_ASTRO_320, &d) == 0);
     CHECK(near(d.latitude_deg, 59.9139, 1e-6) && near(d.longitude_deg, 10.7522, 1e-6));
@@ -177,7 +177,7 @@ static int dog_fields() {
     CHECK(d.track_color_known == 1 && d.track_color_code == 12);
     CHECK(d.configured_id_known == 1 && d.configured_id == 11);
     CHECK(d.id_bytes[0] == 11 && d.id_bytes[1] == 0);
-    CHECK(std::strcmp(d.name, "Khione") == 0);
+    CHECK(std::strcmp(d.name, "Ragnar") == 0);
 
     // The same collar read as an Alpha 100 carries no configured id (its
     // bytes 22..23 are not that field there), a GPS maximum of 3, and the
@@ -225,7 +225,7 @@ static int dog_gps_loss() {
     // Confirmed on both models: byte 17 bit 0x20 is GPS lost. The position
     // and status are returned as sent; the caller decides what a fix is.
     for (uint16_t product : {GARMIN_USB_PRODUCT_ASTRO_320, GARMIN_USB_PRODUCT_ALPHA_100}) {
-        auto p = dog_packet(60.0, 11.0, 5000, product == 1339 ? 2 : 34, 0x20, "Khione");
+        auto p = dog_packet(60.0, 11.0, 5000, product == 1339 ? 2 : 34, 0x20, "Ragnar");
         p[26] = 0;
         antz_garmin_usb_dog_t d{};
         CHECK(garmin_usb_decode_dog(p.data(), p.size(), product, &d) == 0);
@@ -236,12 +236,12 @@ static int dog_gps_loss() {
         CHECK(d.flags == 0x20);
     }
     // Bit 0x10 is only likely low battery; it is not GPS loss.
-    auto p = dog_packet(60.0, 11.0, 5000, 2, 0x10, "Khione");
+    auto p = dog_packet(60.0, 11.0, 5000, 2, 0x10, "Ragnar");
     antz_garmin_usb_dog_t d{};
     CHECK(garmin_usb_decode_dog(p.data(), p.size(), GARMIN_USB_PRODUCT_ASTRO_320, &d) == 0);
     CHECK(d.gps_lost == 0 && d.flags == 0x10);
     // For an unidentified model the bit is not interpreted at all.
-    auto q = dog_packet(60.0, 11.0, 5000, 2, 0x20, "Khione");
+    auto q = dog_packet(60.0, 11.0, 5000, 2, 0x20, "Ragnar");
     CHECK(garmin_usb_decode_dog(q.data(), q.size(), 0, &d) == 0);
     CHECK(d.gps_lost_known == 0 && d.gps_lost == 0 && d.flags == 0x20);
     CHECK(d.gps_bars_max == 0 && d.track_color_known == 0);
@@ -252,7 +252,7 @@ static int dog_gps_loss() {
 static int dog_name_and_evidence() {
     // The name ends at its own NUL whatever length it has, and the tail
     // after it is not read.
-    for (const char* name : {"A", "Khione", "KhioneXX", "KhioneXX123456"}) {
+    for (const char* name : {"A", "Ragnar", "RagnarXX", "RagnarXX123456"}) {
         auto p = dog_packet(59.0, 10.0, 1000, 1, 0, name);
         antz_garmin_usb_dog_t d{};
         CHECK(garmin_usb_decode_dog(p.data(), p.size(), GARMIN_USB_PRODUCT_ASTRO_320, &d) == 0);
@@ -269,7 +269,7 @@ static int dog_name_and_evidence() {
     CHECK(garmin_usb_decode_dog(e.data(), e.size(), GARMIN_USB_PRODUCT_ASTRO_320, &d) == 0);
     CHECK(d.name[0] == '\0');
     // Bytes 30 and 40.. change nothing the decoder returns: they are not keys.
-    auto a = dog_packet(59.0, 10.0, 1000, 1, 0, "Khione");
+    auto a = dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar");
     auto b = a;
     b[30] = 211; b[40] = 99; b[88] = 0xAA; b[92] = 0xBB;
     antz_garmin_usb_dog_t da{}, db{};
@@ -281,7 +281,7 @@ static int dog_name_and_evidence() {
 
 // ─── A packet that is too short is refused ─────────────────────────────────
 static int dog_refused() {
-    auto p = dog_packet(59.0, 10.0, 1000, 1, 0, "Khione");
+    auto p = dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar");
     antz_garmin_usb_dog_t d{};
     CHECK(garmin_usb_decode_dog(p.data(), 40, 1339, &d) == 0);      // the fixed part and a name
     CHECK(garmin_usb_decode_dog(p.data(), 39, 1339, &d) != 0);
@@ -310,7 +310,7 @@ static int framer() {
     antz_garmin_usb_framer_t fr;
     garmin_usb_framer_init(&fr);
     Seen seen;
-    auto dog = dog_packet(59.0, 10.0, 1000, 1, 0, "Khione");
+    auto dog = dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar");
     auto f = frame(20, 3078, dog);
     CHECK(garmin_usb_framer_feed(&fr, f.data(), f.size(), on_packet, &seen) == 0);
     CHECK(seen.headers.size() == 1 && seen.headers[0].pid == 3078 && seen.headers[0].size == 100);
@@ -361,7 +361,7 @@ static int framer_oversize_and_corrupt() {
     garmin_usb_framer_init(&fr);
     Seen seen;
     auto big = frame(20, 248, std::vector<uint8_t>(GARMIN_USB_FRAMER_BUFFER + 100, 0x55));
-    auto dog = frame(20, 3078, dog_packet(59.0, 10.0, 1000, 1, 0, "Khione"));
+    auto dog = frame(20, 3078, dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar"));
     std::vector<uint8_t> all = big;
     all.insert(all.end(), dog.begin(), dog.end());
     for (size_t at = 0; at < all.size(); at += 37) {
