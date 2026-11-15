@@ -290,6 +290,19 @@ foreach(group status_names json_handheld json_position json_dog json_escaping cs
     add_test(NAME garmin_usb_mode.${group} COMMAND antz_garmin_usb_mode_test ${group})
 endforeach()
 
+# Replays of real Astro 320 / Alpha 100 sessions (sanitised, South Pacific), kept in
+# tests/data/astro-usb. The tests read that folder; ANTZ_ASTRO_USB_REPLAYS in the
+# environment may name another. A missing or empty folder fails the tests.
+add_executable(antz_astro_usb_replays_test tests/astro_usb_replays_test.cpp)
+target_include_directories(antz_astro_usb_replays_test PRIVATE src)
+target_link_libraries(antz_astro_usb_replays_test PRIVATE antz_core)
+target_compile_features(antz_astro_usb_replays_test PRIVATE cxx_std_20)
+target_compile_definitions(antz_astro_usb_replays_test PRIVATE
+    ANTZ_ASTRO_USB_REPLAYS_DEFAULT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data/astro-usb")
+foreach(group data_complete decodes session_matches_decoding products_and_units privacy_box statuses names_astro names_alpha collar_off gps_loss_and_recovery alpha_after_reboot cadence paired)
+    add_test(NAME astro_usb_replays.${group} COMMAND antz_astro_usb_replays_test ${group})
+endforeach()
+
 # The Garmin Astro / Alpha USB decoder: framing, header, session, product, the
 # handheld's position and the dog packet. Links nothing but antz_core. The
 # `replay` group decodes real recordings when ANTZ_GARMIN_USB_REPLAY names a

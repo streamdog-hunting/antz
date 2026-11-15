@@ -314,12 +314,12 @@ static int product_and_dogs() {
         CHECK(r.poll() == GARMIN_USB_POLL_OK);
         CHECK(r.log.products.size() == 1);
         CHECK(r.log.products[0].product_id == 1339 && r.log.products[0].software_version_x100 == 460);
-        r.fake.push(GARMIN_USB_ENDPOINT_INTERRUPT, dog_frame(3, "Khione"));
+        r.fake.push(GARMIN_USB_ENDPOINT_INTERRUPT, dog_frame(3, "Ragnar"));
         CHECK(r.poll() == GARMIN_USB_POLL_OK);
         CHECK(r.log.dogs.size() == 1);
         const auto& d = r.log.dogs[0];
         CHECK(d.status_raw == 3 && d.status == GARMIN_USB_DOG_STATUS_TREED);
-        CHECK(std::strcmp(d.name, "Khione") == 0);
+        CHECK(std::strcmp(d.name, "Ragnar") == 0);
         CHECK(near(d.latitude_deg, 59.9139) && near(d.longitude_deg, 10.7522));
         CHECK(d.gps_bars_max == 5 && d.configured_id_known == 1 && d.configured_id == 11);
         CHECK(d.gps_lost_known == 1);
@@ -507,7 +507,7 @@ static int split_on_interrupt() {
     Rig r;
     CHECK(open_stream(r));
     const int INT = GARMIN_USB_ENDPOINT_INTERRUPT;
-    const Bytes stream = cat(product_data(1339, 460), cat(dog_frame(2, "Khione"), pvt_frame(59.9, 10.7)));
+    const Bytes stream = cat(product_data(1339, 460), cat(dog_frame(2, "Ragnar"), pvt_frame(59.9, 10.7)));
     r.fake.push_chunked(INT, stream, 64);                 // 64 byte reads
     const size_t n64 = (stream.size() + 63) / 64;
     for (size_t i = 0; i < n64; ++i) {

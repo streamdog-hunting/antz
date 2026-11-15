@@ -263,7 +263,7 @@ static int dog_name_short_packet_and_bytes() {
     CHECK(garmin_usb_decode_dog(n.data(), n.size(), 1339, &d) == 0);
     CHECK(std::strcmp(d.name, "F\xC3\xB8y") == 0);
     // Bytes 18..21, 28..29 and the area from 40 are not read at all.
-    auto a = dog_packet(59.0, 10.0, 1000, 1, 0, "Khione");
+    auto a = dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar");
     auto b = a;
     b[18] = b[19] = b[20] = b[21] = 0xAB; b[28] = b[29] = 0xCD;
     antz_garmin_usb_dog_t da{}, db{};
@@ -342,7 +342,7 @@ static int framer_edge_cases() {
 
 static int framer_every_split_point() {
     // A packet pair cut at every possible byte gives the same two packets.
-    Bytes a = frame(20, 3078, dog_packet(59.0, 10.0, 1000, 1, 0, "Khione"));
+    Bytes a = frame(20, 3078, dog_packet(59.0, 10.0, 1000, 1, 0, "Ragnar"));
     Bytes b = frame(0, 6, Bytes(4, 9));
     Bytes all = a; all.insert(all.end(), b.begin(), b.end());
     for (size_t cut = 1; cut < all.size(); ++cut) {

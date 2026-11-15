@@ -71,7 +71,7 @@ static antz_garmin_usb_dog_t astro_dog() {
     d.track_color_known = 1; d.track_color_code = 12;
     d.configured_id_known = 1; d.configured_id = 11;
     d.id_bytes[0] = 11;
-    std::strcpy(d.name, "Khione");
+    std::strcpy(d.name, "Ragnar");
     return d;
 }
 
@@ -116,7 +116,7 @@ static int json_position() {
 static int json_dog() {
     const antz_garmin_usb_dog_t d = astro_dog();
     CHECK(chomp(formatDog(Format::Json, 3886356464u, d)) ==
-          R"({"page":"dog","unit_id":3886356464,"name":"Khione","latitude":59.900000,"longitude":10.700000,)"
+          R"({"page":"dog","unit_id":3886356464,"name":"Ragnar","latitude":59.900000,"longitude":10.700000,)"
           R"("time":"2026-11-10T12:00:00Z","status":"moving","status_raw":2,"gps_lost":false,"gps_bars":5,)"
           R"("comm_bars":5,"battery_raw":40,"flags":0,"track_color":12,"configured_id":11})");
 
@@ -198,7 +198,7 @@ static int csv_format() {
         CHECK(has(dh, k));
     CHECK(has(csvHeader("handheld"), "product_id") && has(csvHeader("handheld_position"), "altitude"));
     const std::string row = chomp(formatDog(Format::Csv, 3886356464u, d));
-    CHECK(has(row, "3886356464") && has(row, "Khione") && has(row, "59.900000,10.700000") && has(row, "moving"));
+    CHECK(has(row, "3886356464") && has(row, "Ragnar") && has(row, "59.900000,10.700000") && has(row, "moving"));
     CHECK(has(row, "2026-11-10T12:00:00Z"));
     CHECK(row.find('{') == std::string::npos);
     // Unknown fields are empty cells, and only those three.
@@ -223,7 +223,7 @@ static int text_format() {
     antz_garmin_usb_dog_t d = astro_dog();
     const std::string s = chomp(formatDog(Format::Text, 3886356464u, d));
     CHECK(!s.empty() && s.find('\n') == std::string::npos);
-    CHECK(has(s, "Khione") && has(s, "moving") && has(s, "59.900000") && has(s, "10.700000"));
+    CHECK(has(s, "Ragnar") && has(s, "moving") && has(s, "59.900000") && has(s, "10.700000"));
     CHECK(s.find('?') == std::string::npos);                        // everything is known here
     d.gps_lost_known = 0; d.track_color_known = 0; d.configured_id_known = 0;
     d.status = GARMIN_USB_DOG_STATUS_UNKNOWN;
@@ -385,17 +385,17 @@ static int exact_csv_and_text() {
     CHECK(formatHandheld(Format::Csv, 3886356464u, prod) == "handheld,3886356464,1339,4.60");
     CHECK(formatHandheldPosition(Format::Csv, 3886356464u, pvt) == "handheld_position,3886356464,59.900000,10.700000,141.0,3");
     CHECK(formatDog(Format::Csv, 3886356464u, d) ==
-          "dog,3886356464,Khione,59.900000,10.700000,2026-11-10T12:00:00Z,moving,2,false,5,5,40,0,12,11");
+          "dog,3886356464,Ragnar,59.900000,10.700000,2026-11-10T12:00:00Z,moving,2,false,5,5,40,0,12,11");
 
     // Unknowns are empty cells: gps_lost, track_color, configured_id; the raw status stays.
     antz_garmin_usb_dog_t u = d;
     u.gps_lost_known = 0; u.gps_lost = 0; u.track_color_known = 0; u.track_color_code = 0;
     u.configured_id_known = 0; u.configured_id = 0; u.status = GARMIN_USB_DOG_STATUS_UNKNOWN; u.status_raw = 77;
-    CHECK(formatDog(Format::Csv, 1, u) == "dog,1,Khione,59.900000,10.700000,2026-11-10T12:00:00Z,unknown,77,,5,5,40,0,,");
+    CHECK(formatDog(Format::Csv, 1, u) == "dog,1,Ragnar,59.900000,10.700000,2026-11-10T12:00:00Z,unknown,77,,5,5,40,0,,");
 
     // Lost GPS, southern and western position.
     antz_garmin_usb_dog_t l = d; l.gps_lost = 1; l.flags = 0x20; l.gps_bars = 0; l.latitude_deg = -33.8688; l.longitude_deg = -70.6693;
-    CHECK(formatDog(Format::Csv, 1, l) == "dog,1,Khione,-33.868800,-70.669300,2026-11-10T12:00:00Z,moving,2,true,0,5,40,32,12,11");
+    CHECK(formatDog(Format::Csv, 1, l) == "dog,1,Ragnar,-33.868800,-70.669300,2026-11-10T12:00:00Z,moving,2,true,0,5,40,32,12,11");
 
     // Quoting, RFC 4180.
     antz_garmin_usb_dog_t q = d; std::strcpy(q.name, "a,b");
@@ -409,9 +409,9 @@ static int exact_csv_and_text() {
     CHECK(formatHandheld(Format::Text, 3886356464u, prod) == "handheld unit 3886356464 product 1339 software 4.60");
     CHECK(formatHandheldPosition(Format::Text, 3886356464u, pvt) == "handheld_position unit 3886356464 59.900000,10.700000 alt 141.0 fix 3");
     CHECK(formatDog(Format::Text, 3886356464u, d) ==
-          "dog Khione unit 3886356464 59.900000,10.700000 2026-11-10T12:00:00Z moving (2) gps_lost no gps 5 comm 5 battery_raw 40");
+          "dog Ragnar unit 3886356464 59.900000,10.700000 2026-11-10T12:00:00Z moving (2) gps_lost no gps 5 comm 5 battery_raw 40");
     CHECK(formatDog(Format::Text, 1, u) ==
-          "dog Khione unit 1 59.900000,10.700000 2026-11-10T12:00:00Z unknown (77) gps_lost ? gps 5 comm 5 battery_raw 40");
+          "dog Ragnar unit 1 59.900000,10.700000 2026-11-10T12:00:00Z unknown (77) gps_lost ? gps 5 comm 5 battery_raw 40");
     // «yes» for a lost fix is the counterpart of «no» in the comment (inferred).
     CHECK(has(formatDog(Format::Text, 1, l), "moving (2) gps_lost yes gps 0 comm 5"));
     return 0;
